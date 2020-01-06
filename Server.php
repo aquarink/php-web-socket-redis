@@ -1,11 +1,13 @@
 <?php
 
+// use Ratchet\Client as RClient;
 use Ratchet\Server\IoServer;
 use Ratchet\Http\HttpServer;
 use Ratchet\WebSocket\WsServer;
 use Ratchet\ConnectionInterface;
 use Ratchet\MessageComponentInterface;
 use Predis\Client;
+use WebSocket\Client as WSClient;
 
 require dirname( __FILE__ ) . '/vendor/autoload.php';
 
@@ -133,6 +135,14 @@ class Socket implements MessageComponentInterface {
             } else {
                 $play = "Perintah bermain salah \n";
             }           
+         } elseif($expl_mgg[0] == 'control') {
+            $command = $expl_mgg[1];
+
+            // 'ws://204.48.28.161:3000'
+            $WsClient = new WSClient("ws://204.48.28.161:3000");
+            $WsClient->send($command);
+
+            echo $WsClient->receive();
         }
 
         // BROADCAST
