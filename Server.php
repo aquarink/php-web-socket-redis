@@ -164,6 +164,14 @@ class Socket implements MessageComponentInterface {
         // EXPLODE ROOM OUTPUT
         $expl_player = explode(':', $getPlayerData);
 
+        // GET DATA FROM PLAY
+        $play = '';
+        $playData = $redis->get('PLAY:'.$playerData);
+        if($playData == $conn->resourceId) {
+            $redis->set('PLAY:'.$playerData, '');
+            $play = "[BUTTON_PLAY] : TRUE please push \n";
+        }
+
         // LOG
         echo "[".$conn->resourceId."] : Player ID ".$expl_player[0]." is ".$expl_player[1]." disconnect\n";
         
@@ -177,6 +185,10 @@ class Socket implements MessageComponentInterface {
         foreach ($getRoomKeyData as $key => $resourceId) {
             if(isset($this->clients[$resourceId])) {
                 $this->clients[$resourceId]->send("GM : Player ".$expl_player[1]." disconnected");
+                
+                if($play != '') {
+                    $this->clients[$resourceId]->send($play);
+                }
             }
         }        
     }
@@ -193,9 +205,9 @@ $server = IoServer::factory(
             new Socket()
         )
     ),
-    8081
+    8085
 );
 
-echo "Socket On \n";
+echo "Socket On 8085 \n";
 $server->run();
 
