@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+	<title>Momoka Demo Login</title>
+
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	
+	<script type="text/javascript">
+		function onLoad() {
+			var idPlayer;
+			idPlayer = document.getElementById('idPlayer');
+			var rand = Math.random().toString();
+            var cleanOne = rand.replace(".","");
+            var cleanTwo = cleanOne.replace("0","");
+         	// console.log(cleanTwo)
+
+         	idPlayer.value = cleanTwo;
+
+
+			var momokaData = localStorage.getItem('momokaDaraUser');
+            if(momokaData !== null) {
+                window.location.href = "play.html";
+                return;
+            }
+		}
+
+		function signin() {
+	        var namePlayer;
+	        var idPlayer;
+
+			idPlayer = document.getElementById('idPlayer');
+            namePlayer = document.getElementById('namePlayer');
+
+            var momokaUser = { 'id_game': 767574737271, 'id_user': idPlayer.value, 'name_user': namePlayer.value};
+
+            // console.log(momokaUser);
+
+            var momokaData = localStorage.getItem('momokaDaraUser');
+            if(momokaData !== null) {
+                window.location.href = "play.html";
+                return;
+            } else {
+            	// Put the object into storage
+				localStorage.setItem('momokaDaraUser', JSON.stringify(momokaUser));
+				window.location.href = "play.html";
+            }
+		}
+
+		window.addEventListener("load", onLoad, false);
+	</script>
+</head>
+   
+<body> 
+	<center>
+		<h3 style="margin-top: 100px; margin-bottom: 50px">Signin Player</h3>
+		<label>ID Player</label>
+		<br>
+		<input type="text" id="idPlayer" readonly="">
+		<br>
+		<label>Player Name</label>
+		<br>
+		<input type="text" id="namePlayer" placeholder="Type your name">
+		<br>
+		<button onclick="signin()">Signin Player</button>
+	</center>
+<body>
+
+</body>
+</html>

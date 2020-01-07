@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+	<title>Momoka Demo</title>
+
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <script language = "javascript" type = "text/javascript">
+        
+        var wsUri;
+        var stat;
+        var result;
+        var respon;
+        var chatText;
+        var chatList;
+        var controlGame;
+        var proggressBar;
+        var countLeft;
+        var displayWaktu;
+
+        var gameRoomId;
+        var userId;
+        var userName;
+     
+        var websocket;
+
+        function onLoad() {
+
+            stat = document.getElementById('stat');
+            result = document.getElementById('result');
+            chatText = document.getElementById('chatText');
+            chatList = document.getElementById('chatList');
+            controlGame = document.getElementById('controlGame');
+
+            playButton = document.getElementById('playButton');
+            waitButton = document.getElementById('waitButton');
+
+            proggressBar = document.getElementById("progressBar");
+            countLeft = document.getElementById("countLeft");
+            displayWaktu = document.getElementById("displayWaktu");
+
+            gameRoomId = document.getElementById("gameRoomId");
+            userId = document.getElementById("userId");
+            userName = document.getElementById("userName");
+
+
+            // CHECK LOCAL
+            var momokaData = localStorage.getItem('momokaDaraUser');
+            if(momokaData === null) {
+                window.location.href = "index.html";
+                return;
+            } else {
+                var readMomokaData = JSON.parse(momokaData);
+
+                if(Object.keys(readMomokaData).length == 0) {
+                    window.location.href = "index.html";
+                } else {
+                    wsUri = "ws://localhost:8085?"+readMomokaData.id_game+"&"+readMomokaData.id_user+"&"+readMomokaData.name_user+"";
+
+                    // INIT
+                    gameRoomId.innerHTML = readMomokaData.id_game;
+                    userId.innerHTML = readMomokaData.id_user;
+                    userName.innerHTML = readMomokaData.name_user;
+                }
+            }
+            
+         	if (window.WebSocket === undefined) {
+               stat.innerHTML = "WS Undefined";
+            } else {
+                stat.innerHTML = "WS Loaded";
+
+                websocket = new WebSocket(wsUri);
+                websocket.onopen = function(evt) { onWSOpen(evt) };
+                websocket.onmessage = function(evt) { onWSMessage(evt) };
+                websocket.onclose = function(evt) { onWSClose(evt) };
+                websocket.onerror = function(evt) { onWSError(evt) };
+            }  
+        }
+
+        function onWSOpen(evt) {
+            stat.innerHTML = "WS Open";
+     		 // console.log(evt);
+        }
+
+        function onWSMessage(evt) {
+            stat.innerHTML = "WS Message";
+
+            response = evt.data;
+            console.log(response)
+
+            var explResponse = response.split("**");
+
+            if(explResponse[0] == "pesan") {
+
+                chatText.innerHTML = explResponse[1];
+
+                var tagChild = document.createElement("LI");
+			  	// var text = explResponse[0];
+
+                var textnode = document.createTextNode(explResponse[1]);
+                tagChild.appendChild(textnode);
+                chatList.appendChild(tagChild);
+
+            } else if(explResponse[0] == "button_play") {
+     			console.log("button_play :: " +explResponse[1]);
+     			if(explResponse[1] === 'true') {
+
+     				playButton.style.display = null;
+                    waitButton.style.display = "none";
+
+     			} else if(explResponse[1] === 'false') {
+     				controlGame.style.display = "none";
+                    playButton.style.display = "none";
+     				waitButton.style.display = null;
+
+     				chatText.innerHTML = explResponse[2];
+
+     			} else {
+     				console.log(explResponse);
+     			}
+     		} else if(explResponse[0] == "button_play_self") {
+                console.log("button_play_self :: " +explResponse[1]);
+                if(explResponse[1] === 'true') {
+                    controlGame.style.display = null;
+                    playButton.style.display = "none";
+                    chatText.innerHTML = explResponse[2];
+
+                } else if(explResponse[1] === 'false') {
+                    controlGame.style.display = "none";
+                    playButton.style.display = null;
+                    chatText.innerHTML = explResponse[2];
+
+                } else {
+                    console.log(explResponse);
+                }
+            }
+
+     		result.innerHTML = response;
+     		// console.log(respon);
+        }
+
+        function onWSClose(evt) {
+            stat.innerHTML = "WS Close";
+         	// console.log(evt.data);
+        }  
+
+        function onWSError(evt) {
+            stat.innerHTML = "WS Error";
+         	// console.log(evt.data);
+        }
+
+      	//
+
+      	function sendChat() {
+            var pesan = document.getElementById('chatText');
+            if (websocket.readyState === WebSocket.OPEN) {
+                websocket.send("chat***"+pesan.value);
+            }
+        }
+
+        function command(cmd) {
+            var perintah;
+            if (websocket.readyState === WebSocket.OPEN) {
+
+                if(cmd === 'main') {
+                    perintah = 'play***start';
+
+                    var timeOut = 10;
+                    var countDownCapitPaksa = setInterval(function() {
+                        proggressBar.value = 11 - timeOut;
+                        timeOut -= 1;
+
+                        countLeft.innerHTML = timeOut;
+
+                        if(timeOut <= 0) {
+                            displayWaktu.innerHTML = 'Capit Paksa';
+                            websocket.send('control****1234*5*');
+                            clearInterval(countDownCapitPaksa);
+
+                            // Count Down untuk reset permainan
+                            var timeOutReset = 10;
+                            var countDownReset = setInterval(function() {
+                                proggressBar.value = 11 - timeOutReset;
+                                timeOutReset -= 1;
+
+                                countLeft.innerHTML = timeOutReset;
+
+                                if(timeOutReset <= 0) {
+                                    displayWaktu.innerHTML = 'Permainan Selesai';
+                                    proggressBar.value = 0;
+                                    websocket.send('play***end');
+                                    clearInterval(countDownReset);
+                                }
+                            }, 1000);
+                         }
+                    }, 1000);
+
+                } else if(cmd === 'atas') {
+                    perintah = 'control****1234*3*';
+
+                } else if(cmd === 'kanan') {
+                    perintah = 'control****1234*1*';
+
+                } else if(cmd === 'kiri') {
+                    perintah = 'control****1234*2*';
+
+                } else if(cmd === 'bawah') {
+                    perintah = 'control****1234*4*';
+
+                } else if(cmd === 'capit') {
+                    perintah = 'control****1234*5*';
+
+                } else if(cmd === 'stop') {
+                    perintah = 'control****1234*0*';
+                }
+
+                websocket.send(perintah);
+            }
+        }
+
+        window.addEventListener("load", onLoad, false);
+    </script>
+</head>
+
+<body> 
+	<center>
+		<div style="height: 100px; width: 100%; background-color: #ff4"><span style="vertical-align: middle;">VIDEO</span></div>
+
+		<br>
+
+		<h5>GAME ID   : <i id="gameRoomId"></h5>
+		<h5>USER ID   : <i id="userId"></i></h5>
+		<h5>NAME USER : <i id="userName"></i></h5>
+		<br>
+		<h6>WS Status : <span id="stat"></span></h6>
+		<h6>Respon : <span id="result"></span></h6>
+
+		<br>
+		<progress value="0" max="10" id="progressBar"></progress>
+		<h6 id="displayWaktu">Waktu Kontrol : <i id="countLeft"></i></h6>
+		<br>
+		
+		<div id="playButton">
+			<button onmousedown="command('main')" id="command" data-cmd="main" style="font-weight: bold; height: 50px; width: 100px">Play</button>
+		</div>
+
+        <br>
+
+        <div id="waitButton" style="display: none">
+            <button style="font-weight: bold; height: 50px;" disabled="">There is a player who is playing, please wait...</button>
+        </div>
+
+		<br>
+		
+		<div id="controlGame" style="display: none">
+			<button onmousedown="command('atas')" onmouseup="command('stop')" id="command" data-cmd="atas" style="font-weight: bold; height: 50px; width: 100px">Atas</button>
+
+			<br>
+			<button onmousedown="command('kanan')" onmouseup="command('stop')" id="command" data-cmd="kanan" style="font-weight: bold; height: 50px; width: 100px; margin: 20px">Kanan</button>
+
+			<button onmousedown="command('capit')" id="command" data-cmd="capit" style="font-weight: bold; height: 50px; width: 100px; margin: 20px">Capit</button>
+
+			<button onmousedown="command('kiri')" onmouseup="command('stop')" id="command" data-cmd="kiri" style="font-weight: bold; height: 50px; width: 100px; margin: 20px">Kiri</button>
+
+			<br>
+			<button onmousedown="command('bawah')" onmouseup="command('stop')" id="command" data-cmd="bawah" style="font-weight: bold; height: 50px; width: 100px">Bawah</button>
+		</div>
+	</center>
+	<br>
+	<h5>Chat:</h5>
+	<ul id="chatList">
+	</ul>
+	<br>
+	<input type="text" id="chatText" placeholder="write chat">
+	<button onclick="sendChat()">Send</button>
+    <body>
+
+    </body>
+    </html>

@@ -33,7 +33,7 @@ class Socket implements MessageComponentInterface {
 
         if($querystring == '') {
             // PUSH
-            $this->clients[$conn->resourceId]->send('GM : Parameters not found');
+            $this->clients[$conn->resourceId]->send('pesan**Parameters not found');
         } else {
             if(count($qs) == 3) {
 
@@ -59,7 +59,8 @@ class Socket implements MessageComponentInterface {
                 // $getRoomValData = $redis->hvals('ROOMS:'.$dataQs['roomId']);
                 // print_r($getRoomValData);
 
-                $this->clients[$conn->resourceId]->send('GM : Connected');
+                $this->clients[$conn->resourceId]->send('pesan**Terkoneksi');
+                $this->clients[$conn->resourceId]->send('pesan**ID : '.$conn->resourceId);
 
                 // BROADCAST
                 // DATA PLAYER IN ROOM
@@ -67,13 +68,13 @@ class Socket implements MessageComponentInterface {
                 // print_r($getRoomKeyData);
                 foreach ($getRoomKeyData as $key => $resourceId) {
                     if(isset($this->clients[$resourceId])) {
-                        $this->clients[$resourceId]->send("GM : [".$dataQs['playerName']."] connected \n");
-                        $this->clients[$resourceId]->send("[BUTTON_PLAY] : TRUE \n");
+                        $this->clients[$resourceId]->send("pesan**".$dataQs['playerName']." connected \n");
+                        $this->clients[$resourceId]->send("button_play**true");
                     }
                 }
             } else {
                 // PUSH
-                $this->clients[$conn->resourceId]->send('GM : Parameters not found'); 
+                $this->clients[$conn->resourceId]->send("pesan**Parameters string not found \n"); 
             }
         }
     }
@@ -97,12 +98,22 @@ class Socket implements MessageComponentInterface {
 
         // INIT
         $chat = '';
-        $play = false;
+        $play = '';
+        $playSelf = '';
+        $playOther = '';
 
         // PARSE PESAN
         $expl_mgg = explode('***', $msg);
         if($expl_mgg[0] == 'chat') {
-            $chat = "[".$expl_player[1]."] : ".$expl_mgg[1]." \n";
+            $chatOther = "pesan**".$expl_player[1]." : ".$expl_mgg[1]." \n";
+
+            // PUBLIC
+            // BROADCAST
+            foreach ($getRoomKeyData as $key => $resourceId) {
+                if(isset($this->clients[$resourceId])) {
+                    $this->clients[$resourceId]->send($chatOther);
+                }
+            }
         } elseif($expl_mgg[0] == 'play') {
 
             if($expl_mgg[1] == 'start') {
@@ -111,49 +122,129 @@ class Socket implements MessageComponentInterface {
                 if($playData == '') {
                     // // INIT PLAY THE GAME BIND ROOM
                     $redis->set('PLAY:'.$playerData, $from->resourceId);
-                    $play = "[BUTTON_PLAY] : FALSE ".$expl_player[1]." is Playing \n";
+                    $playSelf = "button_play_self**true";
+                    $playOther = "button_play**false**".$expl_player[1]." is Playing";
+
+                    // PUBLIC
+                    // SELF
+                    $this->clients[$from->resourceId]->send($playSelf);
+                    // BROADCAST
+                    foreach ($getRoomKeyData as $key => $resourceId) {
+                        if(isset($this->clients[$resourceId])) {
+                            $playData = $redis->get('PLAY:'.$playerData);
+
+                            if($resourceId != $playData) {
+                                $this->clients[$resourceId]->send($playOther);
+                            }
+                        }
+                    }
                 } else {
                     // GET DATA PLAY ROOM DATA
                     $getPlayRoomData = $redis->hget('ROOMS:'.$playerData, $playData);
                     // EXPLODE PLAY DATA
                     $expl_play = explode(':', $getPlayRoomData);
-                    $this->clients[$from->resourceId]->send("[BUTTON_PLAY] : FALSE ".$expl_play[1]." is Playing \n");
+
+                    $playSelf = "button_play_self**true";
+                    $playOther = "button_play**false**".$expl_play[1]." is Playing";
+
+                    // PUBLIC
+                    // SELF
+                    $this->clients[$from->resourceId]->send($playSelf);
+                    // BROADCAST
+                    foreach ($getRoomKeyData as $key => $resourceId) {
+                        if(isset($this->clients[$resourceId])) {
+                            $playData = $redis->get('PLAY:'.$playerData);
+
+                            if($resourceId != $playData) {
+                                $this->clients[$resourceId]->send($playOther);
+                            }
+                        }
+                    }
                 }
             } elseif($expl_mgg[1] == 'end') {
                 // GET DATA FROM PLAY
                 $playData = $redis->get('PLAY:'.$playerData);
                 if($playData == $from->resourceId) {
                     $redis->set('PLAY:'.$playerData, '');
-                    $play = "[BUTTON_PLAY] : TRUE please push \n";
+
+                    $playSelf = "button_play_self**false";
+                    $playOther = "button_play**true**Please push";
+
+                    // PUBLIC
+                    // SELF
+                    $this->clients[$from->resourceId]->send($playSelf);
+                    // BROADCAST
+                    foreach ($getRoomKeyData as $key => $resourceId) {
+                        if(isset($this->clients[$resourceId])) {
+                            $playData = $redis->get('PLAY:'.$playerData);
+
+                            if($resourceId != $playData) {
+                                $this->clients[$resourceId]->send($playOther);
+                            }
+                        }
+                    }
                 } else {
-                    // GET DATA PLAY ROOM DATA
-                    $getPlayRoomData = $redis->hget('ROOMS:'.$playerData, $playData);
-                    // EXPLODE PLAY DATA
-                    $expl_play = explode(':', $getPlayRoomData);
-                    $play = "[BUTTON_PLAY] : FALSE ".$expl_play[1]." is Playing please wait \n";
+                    if($playData == '') {
+                        // // INIT PLAY THE GAME BIND ROOM
+                        $redis->set('PLAY:'.$playerData, $from->resourceId);
+
+                        $playSelf = "button_play_self**true";
+                        $playOther = "button_play**false**".$expl_player[1]." is Playing2";
+
+                        // PUBLIC
+                        // SELF
+                        $this->clients[$from->resourceId]->send($playSelf);
+                        // BROADCAST
+                        foreach ($getRoomKeyData as $key => $resourceId) {
+                            if(isset($this->clients[$resourceId])) {
+                                $playData = $redis->get('PLAY:'.$playerData);
+
+                                if($resourceId != $playData) {
+                                    $this->clients[$resourceId]->send($playOther);
+                                }
+                            }
+                        }
+                    } else {
+                        // GET DATA PLAY ROOM DATA
+                        $getPlayRoomData = $redis->hget('ROOMS:'.$playerData, $playData);
+                        // EXPLODE PLAY DATA
+                        $expl_play = explode(':', $getPlayRoomData);
+
+                        $playSelf = "button_play_self**true";
+                        $playOther = "button_play**false**".$expl_player[1]." is Playing3";
+
+                        // PUBLIC
+                        // SELF
+                        $this->clients[$from->resourceId]->send($playSelf);
+                        // BROADCAST
+                        foreach ($getRoomKeyData as $key => $resourceId) {
+                            if(isset($this->clients[$resourceId])) {
+                                $playData = $redis->get('PLAY:'.$playerData);
+
+                                if($resourceId != $playData) {
+                                    $this->clients[$resourceId]->send($playOther);
+                                }
+                            }
+                        }
+                    }
                 }
             } else {
-                $play = "Perintah bermain salah \n";
+                $playOther = "pesan**Perintah bermain salah \n";
             }           
-         } elseif($expl_mgg[0] == 'control') {
+        } elseif($expl_mgg[0] == 'control') {
             $command = $expl_mgg[1];
+            echo "[".date("Y-m-d H:i:s")."] = WS server  : ".$command."\n";
 
             // 'ws://204.48.28.161:3000'
             $WsClient = new WSClient("ws://204.48.28.161:3000");
             $WsClient->send($command);
 
-            echo $WsClient->receive();
-        }
-
-        // BROADCAST
-        foreach ($getRoomKeyData as $key => $resourceId) {
-            if(isset($this->clients[$resourceId])) {
-                if($chat != '') {
-                    $this->clients[$resourceId]->send($chat);
-                } elseif($play != '') {
-                    $this->clients[$resourceId]->send($play);
-                }
-            }
+            echo "[".date("Y-m-d H:i:s")."] = Game server ".$playerData."] : ".$WsClient->receive()."\n";
+        } else {
+            $playSelf = $msg;
+            // PUBLIC
+            // SELF
+            $this->clients[$from->resourceId]->send($playSelf);
         }
     }
 
@@ -175,11 +266,11 @@ class Socket implements MessageComponentInterface {
         $expl_player = explode(':', $getPlayerData);
 
         // GET DATA FROM PLAY
-        $play = '';
+        $playOther = '';
         $playData = $redis->get('PLAY:'.$playerData);
         if($playData == $conn->resourceId) {
             $redis->set('PLAY:'.$playerData, '');
-            $play = "[BUTTON_PLAY] : TRUE please push \n";
+            $playOther = "button_play**true**Please push";
         }
 
         // LOG
@@ -194,10 +285,10 @@ class Socket implements MessageComponentInterface {
         // BROADCAST
         foreach ($getRoomKeyData as $key => $resourceId) {
             if(isset($this->clients[$resourceId])) {
-                $this->clients[$resourceId]->send("GM : Player ".$expl_player[1]." disconnected");
+                $this->clients[$resourceId]->send("pesan**Player ".$expl_player[1]." terputus");
                 
-                if($play != '') {
-                    $this->clients[$resourceId]->send($play);
+                if($playOther != '') {
+                    $this->clients[$resourceId]->send($playOther);
                 }
             }
         }        
