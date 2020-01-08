@@ -271,17 +271,17 @@ class Socket implements MessageComponentInterface {
         if($playData == $conn->resourceId) {
             $redis->set('PLAY:'.$playerData, '');
             $playOther = "button_play**true**Please push";
+
+            // DELETE DATA FROM PLAYERS
+            $redis->del('PLAYERS:'.$conn->resourceId);
+
+            // DELETE DATA FROM ROOMS
+            $redis->hdel('ROOMS:'.$playerData, $conn->resourceId);
         }
 
         // LOG
         echo "[".$conn->resourceId."] : Player ID ".$expl_player[0]." is ".$expl_player[1]." disconnect\n";
         
-        // DELETE DATA FROM PLAYERS
-        $redis->del('PLAYERS:'.$conn->resourceId);
-
-        // DELETE DATA FROM ROOMS
-        $redis->hdel('ROOMS:'.$playerData, $conn->resourceId);
-
         // BROADCAST
         foreach ($getRoomKeyData as $key => $resourceId) {
             if(isset($this->clients[$resourceId])) {
