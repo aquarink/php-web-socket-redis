@@ -241,10 +241,7 @@ class Socket implements MessageComponentInterface {
 
             echo "[".date("Y-m-d H:i:s")."] = Game server ".$playerData."] : ".$WsClient->receive()."\n";
         } else {
-            $playSelf = $msg;
-            // PUBLIC
-            // SELF
-            $this->clients[$from->resourceId]->send($playSelf);
+            echo $msg."\n";
         }
     }
 
